@@ -1,0 +1,109 @@
+#!/bin/bash
+
+# ======================================================
+# toolz - סקריפט ניהול מולטי-פונקציונלי במערכת Linux
+# נכתב לצרכי תרגול ויישום של פקודות מערכת ב-Bash
+# ======================================================
+
+# ================ צבעים ===================
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # ללא צבע
+
+# ================ פונקציית עזרה ===================
+show_help() {
+  echo -e "${BLUE}שימוש: ./toolz [אפשרות]${NC}"
+  echo "אפשרויות קיימות:"
+  echo -e "  -f	עוזר אינטראקטיבי ל-find"
+  echo -e "  -s	הצגת מידע מערכת"
+  echo -e "  -p	ניהול תהליכים"
+  echo -e "  -u	ניהול משתמשים"
+  echo -e "  -h	הצגת עזרה"
+  echo -e "\nדוגמה: ./toolz -p"
+}
+
+# ================ Find Helper ===================
+find_helper() {
+  echo -e "${YELLOW}-- Find Helper --${NC}"
+  read -p "הזן את נתיב החיפוש (ברירת מחדל: .): " path
+  path=${path:-.}
+  read -p "הזן תבנית קובץ (למשל *.txt): " pattern
+  read -p "חפש לפי סוג קובץ (f = קובץ, d = תיקיה, ריק לדלג): " ftype
+
+  cmd="find $path"
+  [ -n "$pattern" ] && cmd+=" -name \"$pattern\""
+  [ -n "$ftype" ] && cmd+=" -type $ftype"
+
+  echo -e "${GREEN}הפלט:${NC}"
+  eval $cmd
+}
+
+# ================ System Info ===================
+system_info() {
+  echo -e "${YELLOW}-- מידע מערכת --${NC}"
+  echo -e "${GREEN}זיכרון פנוי:${NC}"
+  free -h
+  echo -e "\n${GREEN}תהליכים רצים:${NC}"
+  ps -e --no-headers | wc -l
+  echo -e "\n${GREEN}שימוש בדיסק:${NC}"
+  df -h
+}
+
+# ================ Process Management ===================
+process_management() {
+  echo -e "${YELLOW}-- ניהול תהליכים --${NC}"
+  echo "בחר מיון:"
+  echo "1) CPU   2) זיכרון   3) זמן ריצה"
+  read -p "בחירה: " opt
+
+  case $opt in
+    1) sort_opt="%CPU" ;;
+    2) sort_opt="%MEM" ;;
+    3) sort_opt="TIME" ;;
+    *) echo -e "${RED}בחירה לא חוקית${NC}"; return ;;
+  esac
+
+  ps aux --sort=-$sort_opt | head -n 10
+
+  read -p "האם ברצונך להרוג תהליך? (y/n): " killopt
+  if [[ "$killopt" == "y" ]]; then
+    read -p "הזן PID: " pid
+    kill $pid && echo -e "${GREEN}התהליך נהרג.${NC}" || echo -e "${RED}כשל בהריגת תהליך.${NC}"
+  fi
+}
+
+# ================ User Management ===================
+user_management() {
+  echo -e "${YELLOW}-- ניהול משתמשים --${NC}"
+  echo -e "${GREEN}משתמשים מחוברים:${NC}"
+  who
+
+  echo -e "\n${GREEN}מידע על חשבונות:${NC}"
+  cut -d: -f1,3,6 /etc/passwd | column -t -s:
+
+  read -p "הזן שם משתמש להצגת פרטים (ריק לדלג): " uname
+  if [ -n "$uname" ]; then
+    id $uname
+    last -n 1 $uname
+  fi
+}
+
+# ================ ניתוח פרמטרים ===================
+if [ $# -eq 0 ]; then
+  show_help
+  exit 1
+fi
+
+while getopts ":fspuh" opt; do
+  case $opt in
+    f) find_helper ;;
+    s) system_info ;;
+    p) process_management ;;
+    u) user_management ;;
+    h) show_help ;;
+    *) echo -e "${RED}אפשרות לא חוקית${NC}"; show_help ;;
+  esac
+  echo ""
+done
